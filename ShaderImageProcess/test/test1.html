@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>线性滤波器</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #ffffff;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+
+				color: #ffffff;
+			}
+
+			#oldie a { color:#da0 }
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="" target="_blank">数字图像处理</a> - shader demo. featuring <a href="http://www.pouet.net/prod.php?which=52761" target="_blank">Monjori by Mic</a></div>
+
+		<script src="../../build/three.min.js"></script>
+
+		<script src="../../examples/js/Detector.js"></script>
+		<script src="../../examples/js/libs/stats.min.js"></script>
+
+		<script id="vertexShader" type="x-shader/x-vertex">
+
+			void main()	{
+
+				gl_Position = vec4( position, 1.0 );
+
+			}
+
+		</script>
+
+		<script id="fragmentShader" type="x-shader/x-fragment">
+
+			uniform vec2 resolution;
+			uniform float time;
+
+			void main()	{
+				//在这里是-1.0 + 2.0 * gl_FragCoord.xy / resolution.xy 将屏幕坐标转化为webgl坐标
+				// 然后使用/length(p)改变颜色，因为中心向四周，距离越来越大，所以除以距离以后出现了
+				// 中间的颜色最亮（相当于中间的颜色乘以的数字最大）
+				// 
+				// 注意在着色器尽量使用乘法，在这里我想起到一个数字越小，颜色越亮，我用了一个除法，
+				// 也可以用一个lenght（p）的最大值减去实现这个效果
+				// vec4(1.0,0.0,0.0,1.0)*(1.0-length(p));
+				// 
+				// 同时类似这里*4 我们加上这个参数，使颜色的跨度变大，使变化更加显著
+
+				vec2 p = (-1.0 + 2.0 * gl_FragCoord.yx / resolution.yx)*4.0;
+				vec4 bcol = vec4(1.0,0.3,0.6,1.0)/length(p);
+
+			
+				gl_FragColor = bcol;
+
+			}
+
+		</script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera, scene, renderer;
+
+			var uniforms;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.Camera();
+				camera.position.z = 1;
+
+				scene = new THREE.Scene();
+
+				var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
+
+				uniforms = {
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() }
+				};
+
+				var material = new THREE.ShaderMaterial( {
+
+					uniforms: uniforms,
+					vertexShader: document.getElementById( 'vertexShader' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+
+				} );
+
+				var mesh = new THREE.Mesh( geometry, material );
+				scene.add( mesh );
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				container.appendChild( stats.domElement );
+
+				onWindowResize();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize( event ) {
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				uniforms.resolution.value.x = renderer.domElement.width;
+				uniforms.resolution.value.y = renderer.domElement.height;
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+
+			}
+
+			function render() {
+
+				uniforms.time.value += 0.05;
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+</html>

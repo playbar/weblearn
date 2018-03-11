@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>仿射变换</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #ffffff;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}  
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+
+				color: #ffffff;
+			}
+
+			#oldie a { color:#da0 }
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="" target="_blank">数字图像处理</a> 仿射变换 power by <a href="https://github.com/ChowBu" target="_blank">王振</a></div>
+
+		<script src="js/three.min.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/stats.min.js"></script>
+		<script id="vertexShader1" type="x-shader/x-vertex">
+
+			uniform vec2 uvScale;
+			varying vec2 vUv;
+
+			void main()
+			{
+
+				vUv = uvScale * uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+
+			}
+
+	    </script>
+
+		<script id="fragmentShader1" type="x-shader/x-fragment">
+
+			uniform float time;
+			uniform vec2 resolution;
+
+			uniform float fogDensity;
+			uniform vec3 fogColor;
+
+			uniform sampler2D texturenoise;
+			uniform sampler2D texture2;
+
+			varying vec2 vUv;
+
+			void main( void ) {
+
+				vec2 position = -1.0 + 2.0 * vUv;
+
+				vec4 noise = texture2D( texturenoise, vUv );
+			
+				vec4 color = texture2D( texture2, vUv * 1.0 );
+			
+				gl_FragColor = color;
+
+			}
+
+		</script>	
+
+		<script id="vertexShaderprocess" type="x-shader/x-vertex">
+
+			uniform vec2 uvScale;
+			varying vec2 vUv;
+
+			void main()
+			{
+
+				vUv = uvScale * uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+
+			}
+
+	    </script>
+
+		<script id="fragmentShaderprocess" type="x-shader/x-fragment">
+
+			uniform float time;
+			uniform vec2 resolution;
+
+			uniform float fogDensity;
+			uniform vec3 fogColor;
+
+			uniform sampler2D texturenoise;
+			uniform sampler2D texture2;
+
+			varying vec2 vUv;
+
+			void main( void ) {
+			
+				float h = 1.0/512.0;
+
+				/**
+				 * 这里阐述一下意图图像乘以一个矩阵的卷积算法
+				 * 条件：
+				 * 1.现在有一幅图像texture
+				 * 2.一个n*n维度的矩阵A（一般n为奇数）
+				 *
+				 * 问题：如何使用GLSL实现texture乘以A的卷积计算
+				 *
+				 * 解答：
+				 * 1.首先所谓的图像和矩阵相乘，不是矩阵和矩阵相乘
+				 * 2.图像和矩阵相乘的含义是图像颜色叠加（错位）或者相减（错位）
+				 *
+				 * 3.具体实现矩阵
+				 * 3.1矩阵有多少元素就需要多少张图片,n*n个像素，就需要n*n张图片
+				 * 3.2每个矩阵元素的位置代表了图像像素位置。
+				 *    矩阵元素的位置是以中心元素A[（n+1)/2,(N+1)/2]为（0,0）原点，
+				 *    右上为正方向，同时一个元素对应为单位1
+				 * 3.3每个矩阵的元素值，就是对应的图像叠加的权值
+				 *
+				 * 例如:
+				 * 现在我们想让这幅图像实现边缘检测，让他乘以一个矩阵
+				 *    {
+				 *    -1, -2, -1
+				 *     0,  0,  0
+				 *     1,  2,  1
+				 *    }
+				 *
+				 * 这是一个3*3的矩阵，那么我们就需要9幅图像，
+				 * 我们于是获取了color11、color12,,,,,color33一共九幅图片
+				 * 每一副图片的位置都是与之对应的矩阵坐标系
+				 *
+				 *
+				 *
+				 * 顺便在这里阐述一下这里的边缘检测算法实现的原理 梯度函数
+				 *
+				 * 
+				 * 
+				 */
+
+				vec2 position = -1.0 + 2.0 * vUv;
+
+				vec4 noise = texture2D( texturenoise, vUv );
+			
+			    //利用纹理坐标  X对称旋转
+				vec4 color11 = texture2D( texture2, vec2(vUv.x,1.0-vUv.y) );
+				gl_FragColor = color11;
+
+				/*
+				 *第二种理解
+				 *每一个张图片乘以对应的矩阵，
+				 *首先获取对应像素位置color11、color12,,,,,color33一共九个位置
+				 *然后乘以对应的矩阵，如以上所示 
+				 */
+
+			}
+
+		</script>
+
+	
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var clock = new THREE.Clock();
+
+			var camera, scene, renderer, composer;
+
+			var uniforms, material, mesh;
+
+			var mouseX = 0, mouseY = 0,
+			lat = 0, lon = 0, phy = 0, theta = 0;
+
+			var width = window.innerWidth || 2;
+			var height = window.innerHeight || 2;
+
+			var windowHalfX = width / 2;
+			var windowHalfY = height / 2;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 35, windowHalfX / windowHalfY, 1, 3000 );
+				camera.position.z = 2;
+
+				scene = new THREE.Scene();
+
+				uniforms = {
+
+ 				
+					fogDensity: { type: "f", value: 0.45 },
+					fogColor: { type: "v3", value: new THREE.Vector3( 0, 0, 0 ) },
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() },
+					uvScale: { type: "v2", value: new THREE.Vector2( 1.0, 1.0 ) },
+					texturenoise: { type: "t", value: THREE.ImageUtils.loadTexture( "img/cloud.png" ) },
+					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "./img/fruit.jpg" ) }
+
+				};
+
+				uniforms.texturenoise.value.wrapS = uniforms.texturenoise.value.wrapT = THREE.RepeatWrapping;
+				uniforms.texture2.value.wrapS = uniforms.texture2.value.wrapT = THREE.RepeatWrapping;
+
+				var size = 0.65;
+
+				material = new THREE.ShaderMaterial( {
+
+					uniforms: uniforms,
+					vertexShader: document.getElementById( 'vertexShader1' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader1' ).textContent
+
+				} );
+
+				mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 1, 1 ), material );
+				mesh.position.x = -0.55;
+				scene.add( mesh );
+
+				//////////////////////////////////////////
+				
+				uniformsprocess = {
+
+				
+					fogDensity: { type: "f", value: 0.45 },
+					fogColor: { type: "v3", value: new THREE.Vector3( 0, 0, 0 ) },
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() },
+					uvScale: { type: "v2", value: new THREE.Vector2( 1.0, 1.0 ) },
+					texturenoise: { type: "t", value: THREE.ImageUtils.loadTexture( "img/cloud.png" ) },
+					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "./img/fruit.jpg" ) }
+
+				};
+
+				uniformsprocess.texturenoise.value.wrapS = uniformsprocess.texturenoise.value.wrapT = THREE.RepeatWrapping;
+				uniformsprocess.texture2.value.wrapS = uniformsprocess.texture2.value.wrapT = THREE.RepeatWrapping;
+
+				var size = 0.65;
+
+				materialprocess = new THREE.ShaderMaterial( {
+
+					uniforms: uniformsprocess,
+					vertexShader: document.getElementById( 'vertexShaderprocess' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShaderprocess' ).textContent
+
+				} );
+
+				meshprocess = new THREE.Mesh( new THREE.PlaneBufferGeometry( 1, 1 ), materialprocess );
+				meshprocess.position.x = 0.55;
+				scene.add( meshprocess );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				container.appendChild( renderer.domElement );
+				renderer.autoClear = false;
+
+				//
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+
+
+				onWindowResize();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize( event ) {
+
+				uniforms.resolution.value.x = window.innerWidth;
+				uniforms.resolution.value.y = window.innerHeight;
+				uniformsprocess.resolution.value.x = window.innerWidth;
+				uniformsprocess.resolution.value.y = window.innerHeight;
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+
+			}
+
+			function render() {
+
+				var delta = 5 * clock.getDelta();
+
+				uniforms.time.value += 0.2 * delta;
+				uniformsprocess.time.value += 0.2 * delta;
+
+				renderer.clear();
+				renderer.render(scene,camera);
+
+			}
+
+		</script>
+
+	</body>
+</html>

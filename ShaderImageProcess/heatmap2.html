@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>热力图</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #ffffff;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+
+				color: #ffffff;
+			}
+
+			#oldie a { color:#da0 }
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="" target="_blank">数字图像处理</a> 热力图 power by <a href="https://github.com/ChowBu" target="_blank">王振</a></div>
+
+		<script src="js/three.min.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/stats.min.js"></script>
+		<script id="vertexShader1" type="x-shader/x-vertex">
+
+			uniform vec2 uvScale;
+			varying vec2 vUv;
+
+			void main()
+			{
+
+				vUv = uvScale * uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+
+			}
+
+	    </script>
+
+		<script id="fragmentShader1" type="x-shader/x-fragment">
+
+			uniform float time;
+			uniform vec2 resolution;
+
+			uniform float fogDensity;
+			uniform vec3 fogColor;
+
+			uniform sampler2D texturenoise;
+			uniform sampler2D texture2;
+
+			varying vec2 vUv;
+
+			void main( void ) {
+
+				vec2 position = -1.0 + 2.0 * vUv;
+
+				vec4 noise = texture2D( texturenoise, vUv );
+			
+				vec4 color = texture2D( texture2, vUv * 1.0 );
+			
+				gl_FragColor = color;
+
+			}
+
+		</script>	
+
+		<script id="vertexShaderprocess" type="x-shader/x-vertex">
+
+			
+			attribute float size;
+			attribute vec3 pcolor;
+
+			varying vec3 vColor;
+
+			void main() 
+			{
+
+				vColor = pcolor;
+
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+				gl_PointSize = size *2.0;
+
+				gl_Position = projectionMatrix * mvPosition;
+			}
+
+	    </script>
+
+		<script id="fragmentShaderprocess" type="x-shader/x-fragment">
+
+		uniform sampler2D texture;
+		
+		varying vec3 vColor;
+		
+		void main() 
+		{
+			
+			vec4 outColor = texture2D( texture, gl_PointCoord );
+			
+			// gl_FragColor = outColor * vec4( vColor, 1.0 );
+			float grey = (outColor.r + outColor.g + outColor.b)/3.0;
+
+			if(outColor.a>0.8){
+			
+			gl_FragColor = vec4(1.0,0.0,0.0,1.0);
+			
+			} else
+			
+			if(outColor.a>0.6){
+			
+			gl_FragColor = vec4(1.0,1.0,0.2,1.0);
+			
+			} else
+			
+			if(outColor.a>0.4){
+			gl_FragColor = vec4(0.0,1.0,0.2,1.0);
+			} else
+			
+			if(outColor.a>0.2){
+			gl_FragColor = vec4( 0.0,0.0,1.0,1.0);
+			}
+			
+		// gl_FragColor = outColor;
+		}
+
+		</script>
+
+	
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var clock = new THREE.Clock();
+
+			var camera, scene, renderer, composer;
+
+			var uniforms, material, mesh;
+
+			var mouseX = 0, mouseY = 0,
+			lat = 0, lon = 0, phy = 0, theta = 0;
+
+			var width = window.innerWidth || 2;
+			var height = window.innerHeight || 2;
+
+			var windowHalfX = width / 2;
+			var windowHalfY = height / 2;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 35, windowHalfX / windowHalfY, 1, 3000 );
+				camera.position.z = 2;
+
+				scene = new THREE.Scene();
+
+				uniforms = {
+
+ 				
+					fogDensity: { type: "f", value: 0.45 },
+					fogColor: { type: "v3", value: new THREE.Vector3( 0, 0, 0 ) },
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() },
+					uvScale: { type: "v2", value: new THREE.Vector2( 1.0, 1.0 ) },
+					texturenoise: { type: "t", value: THREE.ImageUtils.loadTexture( "img/cloud.png" ) },
+					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "./img/fruit.jpg" ) }
+
+				};
+
+				uniforms.texturenoise.value.wrapS = uniforms.texturenoise.value.wrapT = THREE.RepeatWrapping;
+				uniforms.texture2.value.wrapS = uniforms.texture2.value.wrapT = THREE.RepeatWrapping;
+
+				var size = 0.65;
+
+				material = new THREE.ShaderMaterial( {
+
+					uniforms: uniforms,
+					vertexShader: 
+					document.getElementById( 'vertexShader1' ).textContent,
+					fragmentShader: 
+					document.getElementById( 'fragmentShader1' ).textContent
+
+				} );
+
+				mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 1, 1 ), material );
+				mesh.position.x = -0.55;
+				scene.add( mesh );
+
+				
+				uniformsprocess = {
+
+				
+					fogDensity: { type: "f", value: 0.45 },
+					fogColor: { type: "v3", value: new THREE.Vector3( 0, 0, 0 ) },
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() },
+					uvScale: { type: "v2", value: new THREE.Vector2( 1.0, 1.0 ) },
+					texturenoise: { type: "t", value: THREE.ImageUtils.loadTexture( "img/cloud.png" ) },
+					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "./img/fruit.jpg" ) }
+
+				};
+
+				uniformsprocess.texturenoise.value.wrapS 
+				= uniformsprocess.texturenoise.value.wrapT 
+				= THREE.RepeatWrapping;
+
+				uniformsprocess.texture2.value.wrapS 
+				= uniformsprocess.texture2.value.wrapT 
+				= THREE.RepeatWrapping;
+
+				var size = 0.65;
+				var sprite = THREE.ImageUtils.loadTexture( "./img/lensflare0_alpha.png" ); 
+				var uniforms1 = {
+
+					texture:   { type: "t", value: sprite }
+
+				};
+
+				var attributes = {
+
+					size:  { type: 'f', value: [] },
+					pcolor: { type: 'c', value: [] }
+
+				};
+
+
+				materialprocess = new THREE.ShaderMaterial( {
+
+					uniforms: uniforms1,
+					attributes: attributes,
+					
+					vertexShader: 
+					document.getElementById( 'vertexShaderprocess' ).textContent,
+
+					fragmentShader: 
+					document.getElementById( 'fragmentShaderprocess' ).textContent,
+					blending: 2,
+					// depthWrite: false,
+					transparent: true,
+					// depthTest:false
+
+				} );
+				var geometry = new THREE.Geometry();
+				for ( i = 0; i < 500; i ++ ) {
+
+					attributes.size.value.push( 100.0 );
+
+					var vertex = new THREE.Vector3();
+					vertex.x = Math.random()-0.5;
+					vertex.y = Math.random()-0.5;
+					vertex.z = -0.5;
+
+					geometry.vertices.push( vertex );
+
+				}
+				
+
+
+
+
+				meshprocess = new THREE.PointCloud( geometry, materialprocess );
+				meshprocess.position.x = 0.55;
+				scene.add( meshprocess );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				container.appendChild( renderer.domElement );
+				renderer.autoClear = false;
+
+				//
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+
+
+				onWindowResize();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+
+			function onWindowResize( event ) {
+
+				// uniforms.resolution.value.x = window.innerWidth;
+				// uniforms.resolution.value.y = window.innerHeight;
+				uniformsprocess.resolution.value.x = window.innerWidth;
+				uniformsprocess.resolution.value.y = window.innerHeight;
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+
+			}
+
+			function render() {
+
+				var delta = 5 * clock.getDelta();
+
+				// uniforms.time.value += 0.2 * delta;
+				uniformsprocess.time.value += 0.2 * delta;
+
+				renderer.clear();
+				renderer.render(scene,camera);
+
+			}
+
+		</script>
+
+	</body>
+</html>

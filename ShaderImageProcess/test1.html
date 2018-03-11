@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>均值滤波器</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #ffffff;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+
+				color: #ffffff;
+			}
+
+			#oldie a { color:#da0 }
+		</style>
+	</head>
+	<body>
+
+		
+		<div id="container"></div>
+		<div id="info"><a href="" target="_blank">数字图像处理</a> 中值滤波器 去燥？ power by <a href="https://github.com/ChowBu" target="_blank">王振</a></div>
+
+		<script src="js/three.min.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/stats.min.js"></script>
+		<script id="vertexShader1" type="x-shader/x-vertex">
+
+			uniform vec2 uvScale;
+			varying vec2 vUv;
+
+			void main()
+			{
+
+				vUv = uvScale * uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+
+			}
+
+	    </script>
+
+		<script id="fragmentShader1" type="x-shader/x-fragment">
+
+			uniform float time;
+			uniform vec2 resolution;
+
+			uniform float fogDensity;
+			uniform vec3 fogColor;
+
+			uniform sampler2D texturenoise;
+			uniform sampler2D texture2;
+
+			varying vec2 vUv;
+
+			void main( void ) {
+
+				vec2 position = -1.0 + 2.0 * vUv;
+
+				vec4 noise = texture2D( texturenoise, vUv );
+			
+				vec4 color = texture2D( texture2, vUv * 1.0 );
+			
+				gl_FragColor = color;
+
+			}
+
+		</script>	
+
+		<script id="vertexShaderprocess" type="x-shader/x-vertex">
+
+			uniform vec2 uvScale;
+			varying vec2 vUv;
+
+			void main()
+			{
+
+				vUv = uvScale * uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+
+			}
+
+	    </script>
+
+		<script id="fragmentShaderprocess" type="x-shader/x-fragment">
+
+			uniform float time;
+			uniform vec2 resolution;
+
+			uniform float fogDensity;
+			uniform vec3 fogColor;
+
+			uniform sampler2D texturenoise;
+			uniform sampler2D texture2;
+
+			varying vec2 vUv;
+
+			void main( void ) {
+
+				vec2 position = -1.0 + 2.0 * vUv;
+
+				vec4 noise = texture2D( texturenoise, vUv );
+			
+				vec4 color = vec4( 0.0 );
+			/**
+			 * 模糊原理：
+			 * 实现模糊的原理就是将像素点的领域叠加后给当前点
+			 * 去掉鹤立鸡群和鸡立鹤群的点，可以实现模糊和去除噪声
+			 *
+			 * 环境基础：
+			 * webgl(opengl)的纹理坐标是以0.0~1.0为基础的横纵坐标
+			 * 所以纹理图片的中心是（0.5,0.5）
+			 *
+			 * 所以我们纹理的单元距离是横向是：1.0/图片宽度，在纵向是：1.0/图片高度
+			 *
+			 * 在这里我们为了简单起见，不使用着色器传递图片的长宽，直接使用他的宽高512*512
+			 *
+			 * float h = 1.0/512.0;
+			 *
+			 * 这里实现的是将上下左右各个方向（不包括各个方向夹角上的元素）的3个元素进行叠加
+			 * 
+			 * 
+			 */
+			
+			float h = 1.0/512.0;
+
+
+			// vec4 color11 = texture2D( texture2, vec2( vUv.x - 1.0 * h, vUv.y + 1.0 * h) );
+			// vec4 color12 = texture2D( texture2, vec2( vUv.x - 0.0 * h, vUv.y + 1.0 * h) );  
+			// vec4 color13 = texture2D( texture2, vec2( vUv.x + 1.0 * h, vUv.y + 1.0 * h) );
+			
+			// vec4 color21 = texture2D( texture2, vec2( vUv.x - 1.0 * h, vUv.y) );
+			// vec4 color22 = texture2D( texture2, vec2( vUv.x - 0.0 * h, vUv.y) );
+			// vec4 color23 = texture2D( texture2, vec2( vUv.x + 1.0 * h, vUv.y) );
+
+			// vec4 color31 = texture2D( texture2, vec2( vUv.x - 1.0 * h, vUv.y-1.0*h) );
+			// vec4 color32 = texture2D( texture2, vec2( vUv.x - 0.0 * h, vUv.y-1.0*h) );
+			// vec4 color33 = texture2D( texture2, vec2( vUv.x + 1.0 * h, vUv.y-1.0*h) );
+		
+			// gl_FragColor = 
+			
+			// (
+			// 	 1.0*color11+2.0*color12+1.0*color13
+			// 	+2.0*color21+4.0*color22+2.0*color23
+			// 	+1.0*color31+2.0*color32+1.0*color33
+			
+			// )/16.0;
+
+			/**
+			 * 上面的貌似也不是很模糊，因为我们的模糊程度不高
+			 */
+
+      
+			vec4 colorh1 = texture2D( texture2, vec2( vUv.x - 4.0 * h, vUv.y ) ) ;
+			vec4 colorh2 = texture2D( texture2, vec2( vUv.x - 3.0 * h, vUv.y ) ) ;
+			vec4 colorh3 = texture2D( texture2, vec2( vUv.x - 2.0 * h, vUv.y ) ) ;
+			vec4 colorh4 = texture2D( texture2, vec2( vUv.x - 1.0 * h, vUv.y ) ) ;
+			vec4 colorh5 = texture2D( texture2, vec2( vUv.x - 0.0 * h, vUv.y ) ) ;
+			vec4 colorh6 = texture2D( texture2, vec2( vUv.x + 1.0 * h, vUv.y ) ) ;
+			vec4 colorh7 = texture2D( texture2, vec2( vUv.x + 2.0 * h, vUv.y ) ) ;
+			vec4 colorh8 = texture2D( texture2, vec2( vUv.x + 3.0 * h, vUv.y ) ) ;
+			vec4 colorh9 = texture2D( texture2, vec2( vUv.x + 4.0 * h, vUv.y ) ) ;
+			vec4 colorv1 = texture2D( texture2, vec2( vUv.x, vUv.y - 4.0 * h ) );
+			vec4 colorv2 = texture2D( texture2, vec2( vUv.x, vUv.y - 3.0 * h ) );
+			vec4 colorv3= texture2D( texture2, vec2( vUv.x, vUv.y - 2.0 * h ) );
+			vec4 colorv4= texture2D( texture2, vec2( vUv.x, vUv.y - 1.0 * h ) );
+			vec4 colorv5= texture2D( texture2, vec2( vUv.x, vUv.y - 0.0 * h ) );
+			vec4 colorv6= texture2D( texture2, vec2( vUv.x, vUv.y + 1.0 * h ) );
+			vec4 colorv7= texture2D( texture2, vec2( vUv.x, vUv.y + 2.0 * h ) );
+			vec4 colorv8= texture2D( texture2, vec2( vUv.x, vUv.y + 3.0 * h ) );
+			vec4 colorv9 = texture2D( texture2, vec2( vUv.x, vUv.y + 4.0 * h ) );
+            color =
+			+colorh1
+			+colorh2
+			+colorh3
+			+colorh4
+			+colorh5
+			+colorh6
+			+colorh7
+			+colorh8
+			+colorh9
+			+colorv1
+			+colorv2
+			+colorv3
+			+colorv4
+			+colorv5
+			+colorv6
+			+colorv7
+			+colorv8
+			+colorv9;
+
+			gl_FragColor = color/18.0;
+		}
+
+		</script>
+
+	
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var clock = new THREE.Clock();
+
+			var camera, scene, renderer, composer;
+
+			var uniforms, material, mesh;
+
+			var mouseX = 0, mouseY = 0,
+			lat = 0, lon = 0, phy = 0, theta = 0;
+
+			var width = window.innerWidth || 2;
+			var height = window.innerHeight || 2;
+
+			var windowHalfX = width / 2;
+			var windowHalfY = height / 2;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 35, windowHalfX / windowHalfY, 1, 3000 );
+				camera.position.z = 2;
+
+				scene = new THREE.Scene();
+
+				uniforms = {
+
+					fogDensity: { type: "f", value: 0.45 },
+					fogColor: { type: "v3", value: new THREE.Vector3( 0, 0, 0 ) },
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() },
+					uvScale: { type: "v2", value: new THREE.Vector2( 1.0, 1.0 ) },
+					texturenoise: { type: "t", value: THREE.ImageUtils.loadTexture( "img/cloud.png" ) },
+					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "./img/fruit.jpg" ) }
+
+				};
+
+				uniforms.texturenoise.value.wrapS = uniforms.texturenoise.value.wrapT = THREE.RepeatWrapping;
+				uniforms.texture2.value.wrapS = uniforms.texture2.value.wrapT = THREE.RepeatWrapping;
+
+				var size = 0.65;
+
+				material = new THREE.ShaderMaterial( {
+
+					uniforms: uniforms,
+					vertexShader: document.getElementById( 'vertexShader1' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader1' ).textContent
+
+				} );
+
+				mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 1, 1 ), material );
+				mesh.position.x = -0.55;
+				scene.add( mesh );
+
+				//////////////////////////////////////////
+ 				
+				uniformsprocess = {
+
+				
+					fogDensity: { type: "f", value: 0.45 },
+					fogColor: { type: "v3", value: new THREE.Vector3( 0, 0, 0 ) },
+					time: { type: "f", value: 1.0 },
+					resolution: { type: "v2", value: new THREE.Vector2() },
+					uvScale: { type: "v2", value: new THREE.Vector2( 1.0, 1.0 ) },
+					texturenoise: { type: "t", value: THREE.ImageUtils.loadTexture( "img/cloud.png" ) },
+					texture2: { type: "t", value: THREE.ImageUtils.loadTexture( "./img/fruit.jpg" ) }
+
+				};
+
+				uniformsprocess.texturenoise.value.wrapS = uniformsprocess.texturenoise.value.wrapT = THREE.RepeatWrapping;
+				uniformsprocess.texture2.value.wrapS = uniformsprocess.texture2.value.wrapT = THREE.RepeatWrapping;
+
+				var size = 0.65;
+
+				materialprocess = new THREE.ShaderMaterial( {
+
+					uniforms: uniformsprocess,
+					vertexShader: document.getElementById( 'vertexShaderprocess' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShaderprocess' ).textContent
+
+				} );
+
+				meshprocess = new THREE.Mesh( new THREE.PlaneBufferGeometry( 1, 1 ), materialprocess );
+				meshprocess.position.x = 0.55;
+				scene.add( meshprocess );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				container.appendChild( renderer.domElement );
+				renderer.autoClear = false;
+
+				//
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+
+
+				onWindowResize();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize( event ) {
+
+				uniforms.resolution.value.x = window.innerWidth;
+				uniforms.resolution.value.y = window.innerHeight;
+				uniformsprocess.resolution.value.x = window.innerWidth;
+				uniformsprocess.resolution.value.y = window.innerHeight;
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+
+			}
+
+			function render() {
+
+				var delta = 5 * clock.getDelta();
+
+				uniforms.time.value += 0.2 * delta;
+				uniformsprocess.time.value += 0.2 * delta;
+
+				renderer.clear();
+				renderer.render(scene,camera);
+
+			}
+
+		</script>
+
+	</body>
+</html>
+ 
