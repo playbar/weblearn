@@ -3,15 +3,48 @@
 <head>
     <meta charset="utf-8">
     <title>测试实例</title>
+    <p>本例调用的函数会执行一个计算，然后返回结果：</p>
+    <p id="demo"></p>
+
     <script>
         function myFunction()
         {
             alert("Hello World!");
         }
+        function myFunction1(name,job){
+            alert("Welcome " + name + ", the " + job);
+        }
+
+        function myFunction3(a,b){
+            return a*b;
+        }
+        document.getElementById("demo").innerHTML=myFunction3(4,3);
+
+        var var1 = 1; // 不可配置全局属性
+        var2 = 2; // 没有使用 var 声明，可配置全局属性
+
+        console.log(this.var1); // 1
+        console.log(window.var1); // 1
+        console.log(var2)
+
+        delete var1; // false 无法删除
+        console.log(var1); //1
+
+        delete var2;
+        console.log(delete var2); // true
+        console.log(var2); // 已经删除 报错变量未定义
+
     </script>
 </head>
 
 <body>
 <button onclick="myFunction()">点我</button>
+<p>点击这个按钮，来调用带参数的函数。</p>
+<button onclick="myFunction1('Harry Potter','Wizard')">点击这里</button>
+
+<p>请点击其中的一个按钮，来调用带参数的函数。</p>
+<button onclick="myFunction1('Harry Potter','Wizard')">点击这里</button>
+<button onclick="myFunction1('Bob','Builder')">点击这里</button>
+
 </body>
 </html>
