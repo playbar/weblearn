@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>菜鸟教程(runoob.com)</title>
+</head>
+<body>
+
+<p> typeof 操作符返回变量、对象、函数、表达式的类型。</p>
+<p id="demo"></p>
+<script>
+    document.getElementById("demo").innerHTML =
+        typeof "john" + "<br>" +
+        typeof 3.14 + "<br>" +
+        typeof NaN + "<br>" +
+        typeof false + "<br>" +
+        typeof [1,2,3,4] + "<br>" +
+        typeof {name:'john', age:34} + "<br>" +
+        typeof new Date() + "<br>" +
+        typeof function () {} + "<br>" +
+        typeof myCar + "<br>" +
+        typeof null;
+</script>
+
+
+<p> constructor 属性返回变量或对象的构造函数。</p>
+<p id="demo1"></p>
+<script>
+    document.getElementById("demo1").innerHTML =
+        "john".constructor + "<br>" +
+        (3.14).constructor + "<br>" +
+        false.constructor + "<br>" +
+        [1,2,3,4].constructor + "<br>" +
+        {name:'john', age:34}.constructor + "<br>" +
+        new Date().constructor + "<br>" +
+        function () {}.constructor;
+</script>
+
+<p>判断是否为数组。</p>
+<p id="demo2"></p>
+<script>
+    var fruits = ["Banana", "Orange", "Apple", "Mango"];
+    document.getElementById("demo2").innerHTML = isArray(fruits);
+    function isArray(myArray) {
+        return myArray.constructor.toString().indexOf("Array") > -1;
+    }
+</script>
+
+<p>判断是否为日期。</p>
+<p id="demo3"></p>
+<script>
+    var myDate = new Date();
+    document.getElementById("demo3").innerHTML = isDate(myDate);
+    function isDate(myDate) {
+        return myDate.constructor.toString().indexOf("Date") > -1;
+    }
+</script>
+
+<p> String() 方法可以将数字转换为字符串。</p>
+<p id="demo4"></p>
+<script>
+    var x = 123;
+    document.getElementById("demo4").innerHTML =
+        String(x) + "<br>" +
+        String(123) + "<br>" +
+        String(100 + 23);
+</script>
+
+<p>toString() 方法将数字转换为字符串。</p>
+<p id="demo5"></p>
+<script>
+    var x = 123;
+    document.getElementById("demo5").innerHTML =
+        x.toString() + "<br>" +
+        (123).toString() + "<br>" +
+        (100 + 23).toString();
+</script>
+
+</body>
+</html>
