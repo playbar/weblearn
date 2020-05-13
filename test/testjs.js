@@ -1,3 +1,6 @@
+var app = require('./app.js')
+app.sayName('hello');
+
 function myFunction()
 {
     var bf = new Uint8Array(40);
@@ -5,6 +8,7 @@ function myFunction()
     {
         bf[i] = i * 2;
     }
+
     console.log(bf.byteLength);
     var subbf = bf.subarray(4);
     console.log(subbf);
