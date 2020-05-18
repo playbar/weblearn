@@ -1,3 +1,5 @@
 .DS_Store
 .idea
 aquarium/node_modules
+npmlinktest/usermodule/node_modules
+browserifytest/node_modules
